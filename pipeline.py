@@ -23,7 +23,7 @@ Códigos de salida:
     2  advertencia: corrió pero un control de calidad no pasó
 
 Uso:
-    python pipeline.py                 # últimos 5 días hábiles (se pone al día)
+    python pipeline.py # últimos 5 días hábiles (se pone al día)
     python pipeline.py --dias 15
     python pipeline.py --fecha 2026-09-08
     python pipeline.py --solo-validar
