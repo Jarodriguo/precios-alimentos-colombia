@@ -96,7 +96,7 @@ El desarrollo completo está en `notebooks/eda_02_distribuciones_sesgo.py` (hip�
 DANE (anexo .xlsx diario)
         |
         v
-  extraer.py  ------>  data/raw/*.xlsx        (crudo, inmutable)
+  extraer.py  ------>  data/raw/*.xlsx (crudo, inmutable)
         |
         v   formato ancho -> largo, carga idempotente
   precios_sipsa.parquet
@@ -188,11 +188,11 @@ git clone https://github.com/Jarodriguo/sipsa-pipeline.git
 cd sipsa-pipeline
 
 python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
+source .venv/bin/activate # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-pytest test_limpiar.py -v        # 26 pruebas
-python pipeline.py --dias 5      # descarga, limpia y valida
+pytest test_limpiar.py -v # 26 pruebas
+python pipeline.py --dias 5 # descarga, limpia y valida
 ```
 
 Carga histórica desde cero:
@@ -210,20 +210,20 @@ Los notebooks de EDA usan celdas `# %%`: se abren como notebook en VS Code o Jup
 
 ```
 sipsa-pipeline/
-├── extraer.py                  Descarga y parseo del anexo
-├── limpiar.py                  7 reglas de limpieza
-├── test_limpiar.py             26 pruebas automáticas
-├── pipeline.py                 Orquestador con controles de calidad
+├── extraer.py Descarga y parseo del anexo
+├── limpiar.py 7 reglas de limpieza
+├── test_limpiar.py 26 pruebas automáticas
+├── pipeline.py Orquestador con controles de calidad
 ├── notebooks/
 │   ├── eda_01_integridad_cobertura.py
-│   ├── eda_02_distribuciones_sesgo.py     <- hipótesis inicial
-│   ├── eda_03_descomposicion.py           <- refutación
+│   ├── eda_02_distribuciones_sesgo.py (hipótesis inicial)
+│   ├── eda_03_descomposicion.py (refutación)
 │   └── eda_04_arrastre_y_formato.py
 ├── data/
-│   ├── raw/                    Anexos .xlsx originales, sin modificar
-│   └── processed/              Parquet crudo y limpio
-├── reports/                    Métricas, log, reporte de limpieza, figuras
-└── .github/workflows/          Automatización diaria
+│   ├── raw/ (Anexos .xlsx originales, sin modificar)
+│   └── processed/ Parquet crudo y limpio
+├── reports/ (Métricas, log, reporte de limpieza, figuras)
+└── .github/workflows/ (Automatización diaria)
 ```
 
 ---
