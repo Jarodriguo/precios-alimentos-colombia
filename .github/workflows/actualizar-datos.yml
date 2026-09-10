@@ -1,0 +1,111 @@
+name: Actualizar datos SIPSA
+
+# ---------------------------------------------------------------------------
+# Cuándo corre
+# ---------------------------------------------------------------------------
+on:
+  schedule:
+    # 22:00 UTC = 17:00 hora de Colombia, de lunes a viernes.
+    # El DANE publica el anexo durante la mañana; a las 5 pm ya está arriba.
+    #
+    # OJO: GitHub ejecuta los cron con retraso cuando hay mucha carga, y
+    # ocasionalmente se salta una ejecución. Por eso el pipeline procesa los
+    # últimos días hábiles y no solo el de hoy: si se pierde una corrida, la
+    # siguiente se pone al día sola. Eso solo es posible porque la carga es
+    # idempotente.
+    - cron: "0 22 * * 1-5"
+
+  # Permite dispararlo a mano desde la pestaña Actions.
+  workflow_dispatch:
+    inputs:
+      dias:
+        description: "Cuántos días hábiles procesar"
+        required: false
+        default: "5"
+
+# Escribir en el repositorio requiere permiso explícito.
+permissions:
+  contents: write
+
+# Evita que dos ejecuciones se pisen si una se demora.
+concurrency:
+  group: actualizar-sipsa
+  cancel-in-progress: false
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      # Las pruebas corren ANTES de tocar los datos. Si una regla de limpieza
+      # está rota, es preferible no generar nada a generar algo incorrecto.
+      - name: Ejecutar pruebas
+        run: pytest test_limpiar.py -q
+
+      - name: Ejecutar pipeline
+        id: pipeline
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          set +e
+          python pipeline.py --dias "${{ github.event.inputs.dias || '5' }}"
+          codigo=$?
+          echo "codigo=$codigo" >> "$GITHUB_OUTPUT"
+          # 0 = todo bien, 2 = alerta de calidad (guardamos igual y avisamos),
+          # 1 = fallo real (no se guarda nada).
+          if [ $codigo -eq 1 ]; then exit 1; fi
+          exit 0
+
+      - name: Publicar cambios
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/ reports/
+
+          if git diff --staged --quiet; then
+            echo "Sin cambios que publicar (probablemente festivo o fin de semana)."
+            exit 0
+          fi
+
+          # El mensaje de commit lleva la última fecha de datos, para que el
+          # historial del repositorio se lea como una bitácora.
+          ULTIMA=$(python -c "import json;print(json.load(open('reports/metricas.json'))['ultima_fecha'])")
+          FILAS=$(python -c "import json;print(json.load(open('reports/metricas.json'))['filas_totales'])")
+          git commit -m "datos: actualización hasta ${ULTIMA} (${FILAS} filas)"
+          git push
+
+      - name: Avisar si un control falló
+        if: steps.pipeline.outputs.codigo == '2'
+        run: |
+          echo "::warning::Un control de calidad no pasó. Revisa reports/metricas.json"
+          python -c "
+          import json
+          m = json.load(open('reports/metricas.json'))
+          for p in m['problemas']:
+              print('  -', p)
+          "
+
+      # Deja el log y las métricas descargables desde la ejecución, aunque
+      # el pipeline haya fallado. Es lo primero que vas a querer mirar.
+      - name: Guardar diagnóstico
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostico-${{ github.run_number }}
+          path: |
+            reports/pipeline.log
+            reports/metricas.json
+          retention-days: 30
